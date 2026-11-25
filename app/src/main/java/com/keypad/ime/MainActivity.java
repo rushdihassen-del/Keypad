@@ -33,6 +33,9 @@ public class MainActivity extends Activity {
         addText(col, "A big-key keyboard. It has no internet access, and nothing you type is ever saved or sent.",
                 22, false, d);
 
+        addText(col, "Hold Shift to change colours. Hold a letter for a capital. Hold @ for voice typing. "
+                + "Hold Space to change keyboard. Hold the full stop for a comma.", 20, false, d);
+
         addButton(col, "1. Switch Keypad on", d, new View.OnClickListener() {
             @Override
             public void onClick(View v) {

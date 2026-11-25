@@ -1,41 +1,43 @@
 package com.keypad.ime;
 
 /** Small value types shared by the keyboard logic. */
+
+/** Which colours the letter pages use. The number pad always uses the opposite. */
 enum Scheme { YELLOW_ON_BLACK, BLACK_ON_YELLOW }
 
-enum LayoutMode { STANDARD, PHONE }
-
-enum Page { LETTERS, SYMBOLS1, SYMBOLS2, NUMBERS }
+enum Page { LETTERS, SYMBOLS, NUMBERS }
 
 enum ShiftState { OFF, ONCE, LOCK }
 
 enum KeyType {
-    CHAR, MULTITAP, SHIFT, BACKSPACE, SPACE, ENTER, SEND,
-    SYMBOLS, SYMBOLS_MORE, LETTERS, NUMBERS, COLOUR, LAYOUT, SPACER
+    CHAR, AT, PERIOD, SHIFT, BACKSPACE, SPACE, ENTER, SYMBOLS, NUMBERS, SPACER
 }
 
-/** Where the user's own settings live. Never anything typed. */
+/** Where the user's own setting lives. Never anything typed. */
 interface SettingsStore {
     Scheme getScheme();
 
     void setScheme(Scheme scheme);
-
-    LayoutMode getLayout();
-
-    void setLayout(LayoutMode layout);
 }
 
 /** What the keyboard can do to the app it is typing into. */
 interface Editor {
     void commit(String text);
 
-    void setComposing(String text);
+    /** Delete the given number of characters before the cursor, then type the text. */
+    void replace(int deleteBefore, String text);
 
-    void finishComposing();
+    /** The last few characters before the cursor, used only to check a word before fixing it. */
+    String textBefore(int count);
 
     void backspace();
 
+    /** Enter, exactly as a normal keyboard does it for the open field. */
     void enter();
 
-    void send();
+    /** Open Android's list of keyboards. */
+    void showKeyboardList();
+
+    /** Hand over to Google voice typing, or the keyboard list if it is not there. */
+    void startVoiceTyping();
 }

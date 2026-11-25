@@ -8,15 +8,13 @@ import android.widget.LinearLayout;
 import java.util.List;
 import java.util.Locale;
 
-/** Draws the current page as rows of big keys. */
+/** Draws the current page as rows of big keys with clear gaps between them. */
 final class KeyboardView extends LinearLayout {
     interface OnKey {
         void onKey(Key key);
-    }
 
-    private static final int YELLOW = 0xFFFFD600;
-    private static final int BLACK = 0xFF000000;
-    private static final int DARK = 0xFF262626;
+        void onHold(Key key);
+    }
 
     private final KeyboardController controller;
     private final OnKey onKey;
@@ -35,24 +33,22 @@ final class KeyboardView extends LinearLayout {
     protected void onMeasure(int widthSpec, int heightSpec) {
         DisplayMetrics dm = getResources().getDisplayMetrics();
         boolean landscape = dm.widthPixels > dm.heightPixels;
-        int height = (int) (dm.heightPixels * (landscape ? 0.78f : 0.64f));
+        int height = (int) (dm.heightPixels * Look.pageHeightShare(controller.getPage(), landscape));
         super.onMeasure(widthSpec, MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
     }
 
     void refresh() {
         removeAllViews();
-        boolean yellowKeys = controller.getScheme() == Scheme.YELLOW_ON_BLACK;
-        int keyColor = yellowKeys ? YELLOW : BLACK;
-        int letterColor = yellowKeys ? BLACK : YELLOW;
-        setBackgroundColor(yellowKeys ? BLACK : DARK);
-        int edge = (int) (3 * density);
+        boolean yellowKeys = controller.getPageScheme() == Scheme.YELLOW_ON_BLACK;
+        setBackgroundColor(yellowKeys ? Look.BLACK : Look.DARK);
+        int edge = (int) (2 * density);
         setPadding(edge, edge, edge, (int) (8 * density));
 
-        int hGap = (int) (3 * density);
-        int vGap = (int) (5 * density);
+        int hGap = (int) (5 * density);
+        int vGap = (int) (7 * density);
         boolean upper = controller.getShift() != ShiftState.OFF;
 
-        List<List<Key>> rows = Layouts.rows(controller.getLayout(), controller.getPage());
+        List<List<Key>> rows = Layouts.rows(controller.getPage());
         for (List<Key> row : rows) {
             LinearLayout r = new LinearLayout(getContext());
             r.setOrientation(HORIZONTAL);
@@ -64,22 +60,38 @@ final class KeyboardView extends LinearLayout {
                     continue;
                 }
                 String shown = k.label;
-                if (upper && k.type == KeyType.CHAR && k.label.length() == 1
-                        && Character.isLetter(k.label.charAt(0))) {
+                if (upper && k.isLetter()) {
                     shown = k.label.toUpperCase(Locale.ROOT);
                 }
+                int[] look = Look.colours(k, yellowKeys);
+                int keyColor = look[0];
+                int letterColor = look[1];
+                int outline = look[2];
                 boolean shiftKey = k.type == KeyType.SHIFT;
-                KeyView kv = new KeyView(getContext(), k, shown, keyColor, letterColor,
+                Runnable hold = null;
+                if (KeyboardController.canHold(k)) {
+                    hold = new Runnable() {
+                        @Override
+                        public void run() {
+                            onKey.onHold(k);
+                        }
+                    };
+                }
+                KeyView kv = new KeyView(getContext(), k, shown, keyColor, letterColor, outline,
                         shiftKey && upper, shiftKey && controller.getShift() == ShiftState.LOCK,
                         new Runnable() {
                             @Override
                             public void run() {
                                 onKey.onKey(k);
                             }
-                        });
+                        }, hold, KeyboardController.holdDelayMs(k));
+                if (controller.getPage() != Page.NUMBERS) {
+                    kv.setLetterFraction(Look.SHORT_KEY_LETTER_FRACTION);
+                }
                 if (shiftKey) {
-                    kv.setContentDescription(controller.getShift() == ShiftState.LOCK ? "Caps lock on"
-                            : upper ? "Shift on" : "Shift");
+                    kv.setContentDescription(controller.getShift() == ShiftState.LOCK
+                            ? "Caps lock on. Hold to change colours"
+                            : upper ? "Shift on. Hold to change colours" : k.description);
                 }
                 LinearLayout.LayoutParams lp =
                         new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, k.weight);

@@ -33,6 +33,7 @@ public class PrivacyTest {
         String manifest = read(Paths.get("src/main/AndroidManifest.xml"));
         assertFalse(manifest.contains("uses-permission"));
         assertFalse(manifest.contains("INTERNET"));
+        assertFalse(manifest.contains("RECORD_AUDIO"));
         assertTrue(manifest.contains("android:allowBackup=\"false\""));
     }
 
@@ -42,8 +43,8 @@ public class PrivacyTest {
             "android.util.Log", "System.out", "System.err", "printStackTrace",
             "java.net", "javax.net", "HttpURLConnection", "Socket", "WebView", "okhttp",
             "FileOutputStream", "FileWriter", "openFileOutput", "getExternalFilesDir",
-            "ClipboardManager", "SQLite", "getSelectedText", "getTextBeforeCursor",
-            "getTextAfterCursor", "getExtractedText",
+            "ClipboardManager", "SQLite", "getSelectedText", "getTextAfterCursor",
+            "getExtractedText",
         };
         List<Path> files = mainJava();
         assertTrue(files.size() >= 8);
@@ -56,7 +57,30 @@ public class PrivacyTest {
     }
 
     @Test
-    public void onlyTheSettingsClassWritesToStorageAndOnlyTwoSettings() throws IOException {
+    public void onlyTheServiceReadsFieldTextAndOnlyTheWordJustTyped() throws IOException {
+        for (Path p : mainJava()) {
+            String src = read(p);
+            if (p.getFileName().toString().equals("KeypadService.java")) {
+                assertEquals(1, src.split("getTextBeforeCursor", -1).length - 1);
+                assertTrue(src.contains("getTextBeforeCursor(count, 0)"));
+            } else {
+                assertFalse(p.getFileName() + " must not read field text", src.contains("getTextBeforeCursor"));
+            }
+        }
+    }
+
+    @Test
+    public void voiceTypingIsOnlyAHandOverToTheOtherKeyboard() throws IOException {
+        String service = read(Paths.get("src/main/java/com/keypad/ime/KeypadService.java"));
+        for (String b : new String[] {"RecognizerIntent", "SpeechRecognizer", "AudioRecord",
+            "MediaRecorder", "AudioManager", "startActivity"}) {
+            assertFalse("voice hand-off must not use " + b, service.contains(b));
+        }
+        assertTrue(service.contains("\"voice\".equals(st.getMode())"));
+    }
+
+    @Test
+    public void onlyTheSettingsClassWritesToStorageAndOnlyTheColourChoice() throws IOException {
         List<String> writers = new ArrayList<>();
         for (Path p : mainJava()) {
             String src = read(p);
@@ -67,7 +91,18 @@ public class PrivacyTest {
         assertEquals(1, writers.size());
         assertEquals("PrefsSettings.java", writers.get(0));
         String prefs = read(Paths.get("src/main/java/com/keypad/ime/PrefsSettings.java"));
-        assertEquals(2, prefs.split("putString", -1).length - 1);
+        assertEquals(1, prefs.split("putString", -1).length - 1);
+        assertEquals(0, prefs.split("putBoolean|putInt|putLong|putStringSet", -1).length - 1);
+    }
+
+    @Test
+    public void autocorrectListIsAFixedFileInsideTheApp() throws IOException {
+        assertTrue(Files.exists(Paths.get("src/main/res/raw/words.txt")));
+        String ac = read(Paths.get("src/main/java/com/keypad/ime/Autocorrect.java"));
+        assertFalse(ac.contains("android."));
+        assertFalse(ac.contains("rank.put(typed") || ac.contains("learn"));
+        // The list is only ever filled once, in the constructor.
+        assertEquals(1, ac.split("rank\\.put\\(", -1).length - 1);
     }
 
     @Test

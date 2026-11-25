@@ -3,33 +3,39 @@ package com.keypad.ime;
 import java.util.ArrayList;
 import java.util.List;
 
-/** The rows of keys for every layout and page. Every page ends with the same control row. */
+/** The rows of keys for every page. */
 final class Layouts {
+    /** Letters that get the light orange marker colour. */
+    static final String ANCHORS = "tijfxb";
+
     private Layouts() {
     }
 
-    static List<List<Key>> rows(LayoutMode layout, Page page) {
+    static List<List<Key>> rows(Page page) {
         List<List<Key>> rows = new ArrayList<>();
         switch (page) {
             case NUMBERS:
                 numberPad(rows);
                 break;
-            case SYMBOLS1:
-                symbols1(rows);
-                break;
-            case SYMBOLS2:
-                symbols2(rows);
+            case SYMBOLS:
+                symbols(rows);
+                rows.add(bottomRow(page));
                 break;
             default:
-                if (layout == LayoutMode.PHONE) {
-                    phoneLetters(rows);
-                } else {
-                    qwerty(rows);
-                }
+                qwerty(rows);
+                rows.add(bottomRow(page));
                 break;
         }
-        rows.add(controlRow(layout));
         return rows;
+    }
+
+    private static List<Key> letters(String s) {
+        List<Key> list = new ArrayList<>();
+        for (int i = 0; i < s.length(); i++) {
+            String c = String.valueOf(s.charAt(i));
+            list.add(ANCHORS.contains(c) ? Key.anchor(c) : Key.ch(c));
+        }
+        return list;
     }
 
     private static List<Key> chars(String s) {
@@ -40,113 +46,73 @@ final class Layouts {
         return list;
     }
 
-    private static Key shift() {
-        return Key.fn(KeyType.SHIFT, "", 1.5f, "Shift");
-    }
-
     private static Key backspace(float weight) {
         return Key.fn(KeyType.BACKSPACE, "", weight, "Backspace");
     }
 
+    private static Key enter(float weight) {
+        return Key.fn(KeyType.ENTER, "Enter", weight, "Enter");
+    }
+
     private static void qwerty(List<List<Key>> rows) {
-        rows.add(chars("qwertyuiop"));
+        rows.add(letters("qwertyuiop"));
 
         List<Key> r2 = new ArrayList<>();
         r2.add(Key.spacer(0.5f));
-        r2.addAll(chars("asdfghjkl"));
+        r2.addAll(letters("asdfghjkl"));
         r2.add(Key.spacer(0.5f));
         rows.add(r2);
 
         List<Key> r3 = new ArrayList<>();
-        r3.add(shift());
-        r3.addAll(chars("zxcvbnm"));
+        r3.add(Key.fn(KeyType.SHIFT, "", 1.5f, "Shift. Hold to change colours"));
+        r3.addAll(letters("zxcvbnm"));
         r3.add(backspace(1.5f));
         rows.add(r3);
-
-        List<Key> r4 = new ArrayList<>();
-        r4.add(Key.fn(KeyType.SYMBOLS, "?123", 2f, "Special characters"));
-        r4.add(Key.ch(",", 2f));
-        r4.add(Key.ch(".", 2f));
-        r4.add(Key.ch("'", 2f));
-        r4.add(Key.ch("?", 2f));
-        rows.add(r4);
     }
 
-    private static void phoneLetters(List<List<Key>> rows) {
-        rows.add(row(Key.tap("1", ".,?!"), Key.tap("2", "ABC"), Key.tap("3", "DEF"), backspace(1f)));
-        rows.add(row(Key.tap("4", "GHI"), Key.tap("5", "JKL"), Key.tap("6", "MNO"),
-                Key.fn(KeyType.SHIFT, "", 1f, "Shift")));
-        rows.add(row(Key.tap("7", "PQRS"), Key.tap("8", "TUV"), Key.tap("9", "WXYZ"),
-                Key.fn(KeyType.SYMBOLS, "Symbols", 1f, "Special characters")));
-        rows.add(row(Key.ch(","), Key.ch("."), Key.ch("?"),
-                Key.fn(KeyType.NUMBERS, "123", 1f, "Number pad")));
-    }
-
-    private static void numberPad(List<List<Key>> rows) {
-        rows.add(row(Key.ch("1"), Key.ch("2"), Key.ch("3"), backspace(1f)));
-        rows.add(row(Key.ch("4"), Key.ch("5"), Key.ch("6"), Key.ch(".")));
-        rows.add(row(Key.ch("7"), Key.ch("8"), Key.ch("9"), Key.ch("-")));
-        rows.add(row(Key.ch("*"), Key.ch("0"), Key.ch("#"),
-                Key.fn(KeyType.LETTERS, "ABC", 1f, "Letters")));
-    }
-
-    private static void symbols1(List<List<Key>> rows) {
-        rows.add(chars("1234567890"));
-        rows.add(chars("@#$%&*-+()"));
-
-        List<Key> r3 = new ArrayList<>();
-        r3.add(Key.fn(KeyType.SYMBOLS_MORE, "More", 1.5f, "More special characters"));
-        r3.addAll(chars("!\"':;/?"));
-        r3.add(backspace(1.5f));
+    /** Few, big keys. The full stop and comma live on the letter keyboard. */
+    private static void symbols(List<List<Key>> rows) {
+        rows.add(chars("/\\+-!?;"));
+        rows.add(chars(":_#&=()"));
+        List<Key> r3 = new ArrayList<>(chars("\"'$%*"));
+        r3.add(backspace(2f));
         rows.add(r3);
-
-        List<Key> r4 = new ArrayList<>();
-        r4.add(Key.fn(KeyType.LETTERS, "ABC", 1.5f, "Letters"));
-        r4.add(Key.fn(KeyType.NUMBERS, "Numbers", 2.5f, "Number pad"));
-        r4.add(Key.ch(",", 1.5f));
-        r4.add(Key.ch(".", 1.5f));
-        r4.add(Key.ch("_", 1.5f));
-        r4.add(Key.ch("=", 1.5f));
-        rows.add(r4);
     }
 
-    private static void symbols2(List<List<Key>> rows) {
-        rows.add(chars("[]{}<>^`|\\"));
-        rows.add(chars("€£¥¢°©®±×÷"));
-
-        List<Key> r3 = new ArrayList<>();
-        r3.add(Key.fn(KeyType.SYMBOLS_MORE, "Back", 1.5f, "Back to first special characters"));
-        r3.addAll(chars("¿¡«»§¶~"));
-        r3.add(backspace(1.5f));
-        rows.add(r3);
-
-        List<Key> r4 = new ArrayList<>();
-        r4.add(Key.fn(KeyType.LETTERS, "ABC", 1.5f, "Letters"));
-        r4.add(Key.fn(KeyType.NUMBERS, "Numbers", 2.5f, "Number pad"));
-        r4.add(Key.ch(",", 1.5f));
-        r4.add(Key.ch(".", 1.5f));
-        r4.add(Key.ch("™", 1.5f));
-        r4.add(Key.ch("µ", 1.5f));
-        rows.add(r4);
-    }
-
-    private static List<Key> controlRow(LayoutMode layout) {
-        String layoutLabel = layout == LayoutMode.STANDARD ? "Phone\npad" : "QWERTY";
-        String layoutDesc = layout == LayoutMode.STANDARD
-                ? "Switch to phone style letter pad" : "Switch to standard keyboard";
-        return row(
-                Key.fn(KeyType.COLOUR, "Colour", 1.2f, "Switch colours"),
-                Key.fn(KeyType.LAYOUT, layoutLabel, 1.3f, layoutDesc),
-                Key.fn(KeyType.SPACE, "space", 1.5f, "Space"),
-                Key.fn(KeyType.ENTER, "Enter", 1.4f, "Enter, new line"),
-                Key.fn(KeyType.SEND, "Send", 1.4f, "Send"));
-    }
-
-    private static List<Key> row(Key... keys) {
-        List<Key> list = new ArrayList<>();
-        for (Key k : keys) {
-            list.add(k);
+    /** Same spots on the letter page and the special characters page. */
+    private static List<Key> bottomRow(Page page) {
+        List<Key> r = new ArrayList<>();
+        if (page == Page.SYMBOLS) {
+            r.add(Key.fn(KeyType.SYMBOLS, "ABC", 1f, "Back to letters"));
+        } else {
+            r.add(Key.fn(KeyType.SYMBOLS, "#+=", 1f, "Special characters"));
         }
+        r.add(Key.fn(KeyType.NUMBERS, "123", 1f, "Number pad"));
+        r.add(Key.at(1f));
+        r.add(Key.fn(KeyType.SPACE, "space", 3f, "Space. Hold to change keyboard"));
+        r.add(Key.period(1f));
+        r.add(enter(2f));
+        return r;
+    }
+
+    /** 1 2 3 on top, 0 under the 8. The extras sit in their own columns on the right. */
+    private static void numberPad(List<List<Key>> rows) {
+        rows.add(padRow(Key.ch("1"), Key.ch("2"), Key.ch("3"), Key.ch("+"), backspace(1f)));
+        rows.add(padRow(Key.ch("4"), Key.ch("5"), Key.ch("6"), Key.ch("-"), Key.ch("*")));
+        rows.add(padRow(Key.ch("7"), Key.ch("8"), Key.ch("9"), Key.ch("#"), Key.ch(",")));
+        rows.add(padRow(Key.fn(KeyType.NUMBERS, "ABC", 1f, "Back to letters"), Key.ch("0"),
+                Key.spacer(1f), Key.ch("."), enter(1f)));
+    }
+
+    /** Three number columns, a gap, then two extra columns. */
+    private static List<Key> padRow(Key a, Key b, Key c, Key d, Key e) {
+        List<Key> list = new ArrayList<>();
+        list.add(a);
+        list.add(b);
+        list.add(c);
+        list.add(Key.spacer(0.3f));
+        list.add(d);
+        list.add(e);
         return list;
     }
 }
